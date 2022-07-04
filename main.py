@@ -12,7 +12,7 @@ from dataset import load_dataset_folder
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-ne', '--num_epochs', default=256, type=int)
-parser.add_argument('-bs', '--batch_size', default=16, type=int)
+parser.add_argument('-bs', '--batch_size', default=32, type=int)
 parser.add_argument('-s', '--seed', default=42, type=int)
 parser.add_argument('-is', '--image_size', default=32, type=int)
 parser.add_argument('-ic', '--in_channels', default=3, type=int)
@@ -23,7 +23,7 @@ parser.add_argument('-de', '--dim_embedding', default=32, type=int)
 parser.add_argument('-nes', '--num_embeddings', default=32, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=3e-4, type=float)
+parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float)
 
 args = parser.parse_args()
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             stride=1
         ),
     ).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     earlystopping = EarlyStopping(path='models/')
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
