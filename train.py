@@ -97,7 +97,6 @@ class VQVAELoss(nn.Module):
         return loss, reconstructed_error, q_latent_loss, e_latent_loss
 
 
-
 # 参考：PyTorchでEarlyStoppingを実装する
 # https://qiita.com/ku_a_i/items/ba33c9ce3449da23b503
 class EarlyStopping:

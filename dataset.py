@@ -5,7 +5,7 @@ import tensorflow_datasets as tfds
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
-def resize_image(x, size=(256, 256)):
+def resize_image(x, size=(128, 128)):
     x['image'] = x['image'] / 255
     output_tensor = tf.image.resize_with_crop_or_pad(x['image'], 450, 450)
     padding = (1 - tf.image.resize_with_crop_or_pad(
