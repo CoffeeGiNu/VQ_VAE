@@ -44,6 +44,7 @@ LEARNING_RATE = args.learning_rate
 
 if __name__ == "__main__":
     fix_seed(SEED)
+    torch.cuda.empty_cache()
     log_dir = "./logs"
     writer = SummaryWriter(log_dir)
     loss_fn = lambda lower_bound: -sum(lower_bound)

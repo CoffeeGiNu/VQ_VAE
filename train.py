@@ -11,7 +11,10 @@ import numpy as np
 
 def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
     # model = model.to(device)
-    inputs = torch.from_numpy(np.array(inputs)).to(device)
+    if device == 'cuda':
+        inputs = torch.from_numpy(np.array(inputs)).half().to(device)
+    else:
+        inputs = torch.from_numpy(np.array(inputs)).to(device)
     # labels = torch.from_numpy(np.array(labels)).to(device)
     with torch.set_grad_enabled(is_train):
         results = model(inputs)
