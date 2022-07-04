@@ -23,7 +23,7 @@ parser.add_argument('-de', '--dim_embedding', default=32, type=int)
 parser.add_argument('-nes', '--num_embeddings', default=128, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float)
+parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float)
 
 args = parser.parse_args()
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             stride=1
         ),
     ).to(device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     earlystopping = EarlyStopping(path='models/')
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
