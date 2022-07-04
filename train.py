@@ -34,6 +34,7 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
 
 def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs, 
     batch_size, earlystopping=None, is_train=True, profiler=None, writer=None):
+    model.to(device)
     with tqdm(
         total=len(data_set),
         bar_format=None if 'ipykernel' in sys.modules else '{l_bar}{bar:15}{r_bar}{bar:-10b}',
