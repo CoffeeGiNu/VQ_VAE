@@ -3,6 +3,7 @@ import tensorflow_datasets as tfds
 
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
+tf.config.gpu.set_per_process_memory_growth(True)
 
 
 def resize_image(x, size=(128, 128)):
