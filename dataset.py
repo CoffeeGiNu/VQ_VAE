@@ -3,7 +3,13 @@ import tensorflow_datasets as tfds
 
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
-tf.config.gpu.set_per_process_memory_growth(True)
+physical_devices = tf.config.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
+        print('{} memory growth: {}'.format(device, tf.config.experimental.get_memory_growth(device)))
+else:
+    print("Not enough GPU hardware devices available")
 
 
 def resize_image(x, size=(128, 128)):
