@@ -19,11 +19,11 @@ parser.add_argument('-ic', '--in_channels', default=3, type=int)
 parser.add_argument('-dh', '--dim_hidden', default=128, type=int)
 parser.add_argument('-drh', '--dim_residual_hidden', default=32, type=int)
 parser.add_argument('-nrl', '--num_residual_layers', default=2, type=int)
-parser.add_argument('-de', '--dim_embedding', default=32, type=int)
-parser.add_argument('-nes', '--num_embeddings', default=128, type=int)
+parser.add_argument('-de', '--dim_embedding', default=128, type=int)
+parser.add_argument('-nes', '--num_embeddings', default=64, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float)
+parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float)
 
 args = parser.parse_args()
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         # data_variance=train_data_variance,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, 
-        weight_decay=DECAY, eps=0.001)
+        weight_decay=DECAY, eps=0.0001)
     earlystopping = EarlyStopping(path='models/')
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 

@@ -80,7 +80,7 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
             if is_train:
                 r = results['x_reconstructed']
                 # r = torch.reshape(r, (r.shape[0], 1, 28, 28))
-                grid = torchvision.utils.make_grid(r, nrow=r.shape[0])
+                grid = torchvision.utils.make_grid(r+0.5, nrow=r.shape[0])
                 writer.add_image("reconstraction_image", grid, global_step=epoch)
         if earlystopping:
             earlystopping((running_loss), model)
@@ -99,8 +99,7 @@ class VQVAELoss(nn.Module):
         quantized = quantized.view(encoded.size())
         e_latent_loss = F.mse_loss(quantized.detach(), encoded)
         q_latent_loss = F.mse_loss(quantized, encoded.detach())
-        reconstructed_loss = torch.mean(
-            torch.square(outputs - inputs) / torch.tensor(self._data_variance))
+        reconstructed_loss = F.mse_loss(outputs, inputs) / torch.tensor(self._data_variance)
         loss = (reconstructed_loss + q_latent_loss 
              + self._commitment_cost * e_latent_loss)
         return dict(

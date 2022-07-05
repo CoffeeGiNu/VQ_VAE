@@ -13,7 +13,7 @@ else:
 
 
 def resize_image(x, size=(128, 128)):
-    x['image'] = x['image'] / 255
+    x['image'] = (x['image'] / 255) - 0.5
     output_tensor = tf.image.resize_with_crop_or_pad(x['image'], 450, 450)
     padding = (1 - tf.image.resize_with_crop_or_pad(
         tf.ones_like(x['image']), 450, 450
