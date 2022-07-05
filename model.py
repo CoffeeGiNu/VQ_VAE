@@ -91,33 +91,31 @@ class Encoder(nn.Module):
 
 class VectorQuantizer(nn.Module):
 
-    def __init__(self, dim_embedding, num_embeddings, commitment_cost):
+    def __init__(self, dim_embedding, num_embeddings):
         super(VectorQuantizer, self).__init__()
         self._dim_embedding = dim_embedding
         self._num_embeddings = num_embeddings
-        self._commitment_cost = commitment_cost
-        self._w = nn.Embedding(self._num_embeddings, self._dim_embedding)
-        self._w.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
+        self._embedding = nn.Embedding(num_embeddings, dim_embedding)
+        self._embedding.weight.data.uniform_(-1/num_embeddings, 1/num_embeddings)
      
     def forward(self, inputs):
         inputs = inputs.permute(0, 2, 3, 1).contiguous()
         input_shape = inputs.size()
         input_flattened = inputs.view(-1, self._dim_embedding)
-        distances = (
-            torch.sum(input_flattened ** 2, dim=1, keepdim=True) 
-            - 2 * torch.matmul(input_flattened, self._w.weight.t())
-            + torch.sum(self._w.weight ** 2, dim=1))
+        distances = (torch.sum(input_flattened ** 2, dim=1, keepdim=True) 
+            - 2 * torch.matmul(input_flattened, self._embedding.weight.t())
+            + torch.sum(self._embedding.weight ** 2, dim=1))
         encoding_indices = torch.argmax(-distances, 1).unsqueeze(1)
         encodings = torch.zeros(
             encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
         encodings.scatter_(1, encoding_indices, 1)
 
-        quantized = torch.matmul(encodings, self._w.weight)
+        quantized = torch.matmul(encodings, self._embedding.weight)
         quantized = quantized.view(input_shape) 
         
-        e_latent_loss = F.mse_loss(quantized.detach(), inputs)
-        q_latent_loss = F.mse_loss(quantized, inputs.detach())
-        vq_loss = q_latent_loss + self._commitment_cost * e_latent_loss
+        # e_latent_loss = F.mse_loss(quantized.detach(), inputs)
+        # q_latent_loss = F.mse_loss(quantized, inputs.detach())
+        # vq_loss = q_latent_loss + self._commitment_cost * e_latent_loss
         
         quantized = inputs + (quantized - inputs).detach()
         quantized = quantized.permute(0, 3, 1, 2).contiguous()
@@ -126,11 +124,11 @@ class VectorQuantizer(nn.Module):
         perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
         return {
             'distances': distances,
-            'quantize': quantized,
-            'vq_loss': vq_loss, 
             'encodings': encodings,
             'encoding_indices': encoding_indices,
+            'quantize': quantized,
             'perplexity': perplexity,
+            # 'vq_loss': vq_loss, 
         }
 
 
@@ -182,25 +180,26 @@ class Decoder(nn.Module):
 
 class VQVAE(nn.Module):
 
-    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, data_variance, name=None):
+    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, name=None):
         super(VQVAE, self).__init__()
         self._encoder = encoder
         self._decoder = decoder
         self._vector_quantizer = vector_quantizer
         self._pre_vq_conv = pre_vq_conv
-        self._data_variance = data_variance
+        # self._data_variance = data_variance
         
     def forward(self, inputs):
         z = self._pre_vq_conv(self._encoder(inputs))
         vq_output = self._vector_quantizer(z)
-        x_reconstructed = self._decoder(vq_output['quantize'])
-        reconstructed_error = torch.mean(
-            torch.square(x_reconstructed - inputs) / torch.tensor(self._data_variance))
-        loss = reconstructed_error + vq_output['vq_loss']
+        z_q = vq_output['quantize']
+        x_reconstructed = self._decoder(z_q)
+        # reconstructed_error = torch.mean(
+        #     torch.square(x_reconstructed - inputs) / torch.tensor(self._data_variance))
+        # loss = reconstructed_error + vq_output['vq_loss']
         return {
             'z': z,
             'x_reconstructed': x_reconstructed,
-            'loss': loss,
-            'reconstructed_error': reconstructed_error,
+            # 'loss': loss,
+            # 'reconstructed_error': reconstructed_error,
             'vq_output': vq_output,
         }

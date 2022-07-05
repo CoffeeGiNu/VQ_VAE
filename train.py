@@ -18,9 +18,13 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
     # labels = torch.from_numpy(np.array(labels)).to(device)
     with torch.set_grad_enabled(is_train):
         results = model(inputs)
-        loss = results['loss']
-        # loss, reconstructed_error, q_latent_loss, e_latent_loss = criterion(
-        #     inputs, results['z'], results['x_reconstructed'], results['vq_output']['quantize'])
+        # loss = results['loss']
+        loss_dict = criterion(
+            inputs=inputs, 
+            encoded=results['z'], 
+            outputs=results['x_reconstructed'], 
+            quantized=results['vq_output']['quantize'])
+        loss = loss_dict['loss']
         if is_train:
             optimizer.zero_grad()
             loss.backward()
@@ -29,7 +33,7 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
     # results['reconstructed_error'] = reconstructed_error
     # results['q_latent_loss'] = q_latent_loss
     # results['e_latent_loss'] = e_latent_loss
-    return model, results
+    return model, results, loss_dict
 
 
 def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs, 
@@ -48,15 +52,19 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
         for data in data_set:
             inputs = data['image']
             labels = data['label']
-            model, results = step(
+            model, results, loss_dict = step(
                 model, inputs, labels, optimizer, criterion, device, is_train=is_train)
             if writer:
                 writer.add_scalar("loss_train/loss", 
-                    results['loss'].cpu().detach().numpy(), epoch + total)
-                writer.add_scalar("loss_train/reconstructed_error", 
-                    results['reconstructed_error'].cpu().detach().numpy(), epoch + total)
+                    loss_dict['loss'].cpu().detach().numpy(), epoch + total)
+                writer.add_scalar("loss_train/reconstructed_loss", 
+                    loss_dict['reconstructed_loss'].cpu().detach().numpy(), epoch + total)
+                writer.add_scalar("loss_train/vq_loss", 
+                    loss_dict['vq_loss'].cpu().detach().numpy(), epoch + total)
+                writer.add_scalar("loss_train/commitment_loss", 
+                    loss_dict['commitment_loss'].cpu().detach().numpy(), epoch + total)
             total += batch_size
-            loss_sum += results['loss'].cpu().detach().numpy() * batch_size
+            loss_sum += loss_dict['loss'].cpu().detach().numpy() * batch_size
             running_loss = loss_sum / total
             # accuracy_sum += (torch.argmax(preds, axis=1).detach().cpu().numpy() == labels).sum()
             # running_accuracy = accuracy_sum.item() / total
@@ -72,7 +80,7 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
             if is_train:
                 r = results['x_reconstructed']
                 # r = torch.reshape(r, (r.shape[0], 1, 28, 28))
-                grid = torchvision.utils.make_grid(r, nrow=10)
+                grid = torchvision.utils.make_grid(r[10], nrow=10)
                 writer.add_image("reconstraction_image", grid, global_step=epoch)
         if earlystopping:
             earlystopping((running_loss), model)
@@ -80,22 +88,27 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
     return model
 
 
-# class VQVAELoss(nn.Module):
+class VQVAELoss(nn.Module):
 
-#     def __init__(self, commitment_cost, data_variance):
-#         super().__init__()
-#         self._commitment_cost = commitment_cost
-#         self._data_variance = data_variance
+    def __init__(self, commitment_cost, data_variance):
+        super().__init__()
+        self._commitment_cost = commitment_cost
+        self._data_variance = data_variance
 
-#     def forward(self, inputs, encoded, outputs, quantized):
-#         quantized = quantized.view(encoded.size())
-#         e_latent_loss = F.mse_loss(quantized.detach(), encoded)
-#         q_latent_loss = F.mse_loss(quantized, encoded.detach())
-#         reconstructed_error = torch.mean(
-#             torch.square(outputs - inputs) / torch.tensor(self._data_variance))
-#         loss = (reconstructed_error + q_latent_loss 
-#              + self._commitment_cost * e_latent_loss)
-#         return loss, reconstructed_error, q_latent_loss, e_latent_loss
+    def forward(self, inputs, encoded, outputs, quantized):
+        quantized = quantized.view(encoded.size())
+        e_latent_loss = F.mse_loss(quantized.detach(), encoded)
+        q_latent_loss = F.mse_loss(quantized, encoded.detach())
+        reconstructed_loss = torch.mean(
+            torch.square(outputs - inputs) / torch.tensor(self._data_variance))
+        loss = (reconstructed_loss + q_latent_loss 
+             + self._commitment_cost * e_latent_loss)
+        return dict(
+            reconstructed_loss=reconstructed_loss, 
+            vq_loss=q_latent_loss, 
+            commitment_loss=e_latent_loss,
+            loss=loss, 
+        )
 
 
 # 参考：PyTorchでEarlyStoppingを実装する
