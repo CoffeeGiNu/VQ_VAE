@@ -111,21 +111,23 @@ class VectorQuantizer(nn.Module):
         encodings = torch.zeros(
             encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
         encodings.scatter_(1, encoding_indices, 1)
+
         quantized = torch.matmul(encodings, self._w.weight)
         quantized = quantized.view(input_shape) 
         
-        # e_latent_loss = F.mse_loss(quantized.detach(), inputs)
-        # q_latent_loss = F.mse_loss(quantized, inputs.detach())
-        # loss = q_latent_loss + self._commitment_cost * e_latent_loss
-
+        e_latent_loss = F.mse_loss(quantized.detach(), inputs)
+        q_latent_loss = F.mse_loss(quantized, inputs.detach())
+        vq_loss = q_latent_loss + self._commitment_cost * e_latent_loss
+        
         quantized = inputs + (quantized - inputs).detach()
         quantized = quantized.permute(0, 3, 1, 2).contiguous()
+
         avg_probs = torch.mean(encodings, dim=0)
         perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
         return {
             'distances': distances,
             'quantize': quantized,
-            # 'loss': loss, 
+            'vq_loss': vq_loss, 
             'encodings': encodings,
             'encoding_indices': encoding_indices,
             'perplexity': perplexity,
@@ -180,24 +182,25 @@ class Decoder(nn.Module):
 
 class VQVAE(nn.Module):
 
-    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, name=None):
+    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, data_variance, name=None):
         super(VQVAE, self).__init__()
         self._encoder = encoder
         self._decoder = decoder
         self._vector_quantizer = vector_quantizer
         self._pre_vq_conv = pre_vq_conv
+        self._data_variance = data_variance
         
     def forward(self, inputs):
         z = self._pre_vq_conv(self._encoder(inputs))
         vq_output = self._vector_quantizer(z)
         x_reconstructed = self._decoder(vq_output['quantize'])
-        # reconstructed_error = torch.mean(
-            # torch.square(x_reconstructed - inputs) / self._data_variance)
-        # loss = reconstructed_error + vq_output['loss']
+        reconstructed_error = torch.mean(
+            torch.square(x_reconstructed - inputs) / torch.tensor(self._data_variance))
+        loss = reconstructed_error + vq_output['vq_loss']
         return {
             'z': z,
             'x_reconstructed': x_reconstructed,
-            # 'loss': loss,
-            # 'reconstructed_error': reconstructed_error,
+            'loss': loss,
+            'reconstructed_error': reconstructed_error,
             'vq_output': vq_output,
         }

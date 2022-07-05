@@ -11,19 +11,19 @@ from dataset import load_dataset_folder
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-ne', '--num_epochs', default=256, type=int)
-parser.add_argument('-bs', '--batch_size', default=32, type=int)
+parser.add_argument('-ne', '--num_epochs', default=128, type=int)
+parser.add_argument('-bs', '--batch_size', default=128, type=int)
 parser.add_argument('-s', '--seed', default=42, type=int)
-parser.add_argument('-is', '--image_size', default=32, type=int)
+parser.add_argument('-is', '--image_size', default=128, type=int)
 parser.add_argument('-ic', '--in_channels', default=3, type=int)
 parser.add_argument('-dh', '--dim_hidden', default=128, type=int)
 parser.add_argument('-drh', '--dim_residual_hidden', default=32, type=int)
 parser.add_argument('-nrl', '--num_residual_layers', default=2, type=int)
-parser.add_argument('-de', '--dim_embedding', default=64, type=int)
+parser.add_argument('-de', '--dim_embedding', default=128, type=int)
 parser.add_argument('-nes', '--num_embeddings', default=256, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=1e-5, type=float)
+parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float)
 
 args = parser.parse_args()
 
@@ -83,10 +83,12 @@ if __name__ == "__main__":
             kernel_size=1,
             stride=1
         ),
+        data_variance=train_data_variance,
     ).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, 
+        weight_decay=DECAY, eps=0.001)
     earlystopping = EarlyStopping(path='models/')
-    criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
+    # criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
     with torch.profiler.profile(
         schedule=torch.profiler.schedule(
@@ -99,8 +101,8 @@ if __name__ == "__main__":
         with_stack=True
     ) as profiler:
         for e in range(NUM_EPOCHS):
-            model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
-            model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
+            model = epoch_loop(model, dataset_train, optimizer, None, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
+            model = epoch_loop(model, dataset_valid, optimizer, None, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
 
             if earlystopping.early_stop:
                 # writer.add_graph(model)
