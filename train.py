@@ -70,7 +70,7 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
                 writer.add_scalar("loss_train/perplexity", 
                     results['vq_output']['perplexity'].cpu().detach().numpy(), epoch + total)
             total += batch_size
-            loss_sum += loss_dict['loss'].cpu().detach().numpy() * batch_size
+            loss_sum += float(loss_dict['loss'].cpu().detach().numpy()) * batch_size
             running_loss = loss_sum / total
             # accuracy_sum += (torch.argmax(preds, axis=1).detach().cpu().numpy() == labels).sum()
             # running_accuracy = accuracy_sum.item() / total
