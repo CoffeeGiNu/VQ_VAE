@@ -23,7 +23,7 @@ parser.add_argument('-de', '--dim_embedding', default=128, type=int)
 parser.add_argument('-nes', '--num_embeddings', default=512, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=0.0002, type=float)
+parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float)
 
 args = parser.parse_args()
 
