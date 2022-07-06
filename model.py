@@ -42,7 +42,7 @@ class ResidualStack(nn.Module):
     def forward(self, x):
         for i in range(self._num_residual_layers):
             x = self._layers[i](x)
-        return x
+        return F.relu(x)
 
 
 class Encoder(nn.Module):
@@ -99,29 +99,37 @@ class VectorQuantizer(nn.Module):
         self._embedding.weight.data.uniform_(-1/num_embeddings, 1/num_embeddings)
      
     def forward(self, inputs):
+        # convert inputs from BCHW -> BHWC
         inputs = inputs.permute(0, 2, 3, 1).contiguous()
-        input_shape = inputs.size()
-        input_flattened = inputs.view(-1, self._dim_embedding)
-        distances = (torch.sum(input_flattened ** 2, dim=1, keepdim=True) 
-            - 2 * torch.matmul(input_flattened, self._embedding.weight.t())
-            + torch.sum(self._embedding.weight ** 2, dim=1))
-        encoding_indices = torch.argmax(-distances, 1).unsqueeze(1)
-        encodings = torch.zeros(
-            encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
-        encodings.scatter_(1, encoding_indices, 1)
-
-        quantized = torch.matmul(encodings, self._embedding.weight)
-        quantized = quantized.view(input_shape) 
+        input_shape = inputs.shape
         
+        # Flatten input
+        flat_input = inputs.view(-1, self._dim_embedding)
+        
+        # Calculate distances
+        distances = (torch.sum(flat_input**2, dim=1, keepdim=True) 
+                    + torch.sum(self._embedding.weight**2, dim=1)
+                    - 2 * torch.matmul(flat_input, self._embedding.weight.t()))
+            
+        # Encoding
+        encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
+        encodings = torch.zeros(encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
+        encodings.scatter_(1, encoding_indices, 1)
+        
+        # Quantize and unflatten
+        quantized = torch.matmul(encodings, self._embedding.weight).view(input_shape)
+        
+        # Loss
         # e_latent_loss = F.mse_loss(quantized.detach(), inputs)
         # q_latent_loss = F.mse_loss(quantized, inputs.detach())
-        # vq_loss = q_latent_loss + self._commitment_cost * e_latent_loss
+        # loss = q_latent_loss + self._commitment_cost * e_latent_loss
         
         quantized = inputs + (quantized - inputs).detach()
-        quantized = quantized.permute(0, 3, 1, 2).contiguous()
-
         avg_probs = torch.mean(encodings, dim=0)
         perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
+        
+        # convert quantized from BHWC -> BCHW
+        quantized = quantized.permute(0, 3, 1, 2).contiguous()
         return {
             'distances': distances,
             'encodings': encodings,
@@ -173,8 +181,8 @@ class Decoder(nn.Module):
         h = self._dec1(z_q)
         h = self._residual_stack(h)
         h = torch.relu(self._dec2(h))
-        h = self._dec3(h)
-        x_reconstructed = torch.sigmoid(h)
+        x_reconstructed = self._dec3(h)
+        # x_reconstructed = torch.sigmoid(h)
         return x_reconstructed
 
 

@@ -21,7 +21,7 @@ def resize_image(x, size=(32, 32)):
     output_tensor += padding
     output_tensor = tf.image.resize(output_tensor, (size[0], size[1]))
     output_tensor = tf.transpose(output_tensor, (2, 0, 1))
-    x['image'] = output_tensor - 0.5
+    x['image'] = output_tensor
     return x
 
 
