@@ -85,18 +85,18 @@ if __name__ == "__main__":
         ),
         # data_variance=train_data_variance,
     ).to(device)
-    # optimizer = torch.optim.Adam(
-    #     model.parameters(), 
-    #     lr=LEARNING_RATE, 
-    #     # weight_decay=DECAY, 
-    #     eps=0.001
-    # )
-    optimizer = torch.optim.SGD(
+    optimizer = torch.optim.Adam(
         model.parameters(), 
         lr=LEARNING_RATE, 
         # weight_decay=DECAY, 
-        # eps=0.001
+        eps=0.001
     )
+    # optimizer = torch.optim.SGD(
+    #     model.parameters(), 
+    #     lr=LEARNING_RATE, 
+    #     # weight_decay=DECAY, 
+    #     # eps=0.001
+    # )
     earlystopping = EarlyStopping(path='models/', patience=5)
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
