@@ -12,7 +12,7 @@ else:
     print("Not enough GPU hardware devices available")
 
 
-def resize_image(x, size=(128, 128)):
+def resize_image(x, size=(32, 32)):
     x['image'] = x['image'] / 255
     output_tensor = tf.image.resize_with_crop_or_pad(x['image'], 450, 450)
     padding = (1 - tf.image.resize_with_crop_or_pad(

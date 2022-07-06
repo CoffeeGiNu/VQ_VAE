@@ -104,7 +104,9 @@ class VQVAELoss(nn.Module):
         quantized = quantized.view(encoded.size())
         e_latent_loss = F.mse_loss(quantized.detach(), encoded)
         q_latent_loss = F.mse_loss(quantized, encoded.detach())
-        reconstructed_loss = F.mse_loss(outputs, inputs) / torch.tensor(self._data_variance)
+        reconstructed_loss = (F.mse_loss(outputs, inputs)
+            # / torch.tensor(self._data_variance)
+        )
         loss = (reconstructed_loss + q_latent_loss 
              + self._commitment_cost * e_latent_loss)
         return dict(
