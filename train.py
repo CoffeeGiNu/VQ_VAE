@@ -28,6 +28,7 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
         loss = loss_dict['loss']
         if is_train:
             loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
             optimizer.step()
     # results['loss'] = loss
     # results['reconstructed_error'] = reconstructed_error
