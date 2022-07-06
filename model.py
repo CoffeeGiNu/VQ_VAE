@@ -182,7 +182,7 @@ class Decoder(nn.Module):
         h = self._residual_stack(h)
         h = torch.relu(self._dec2(h))
         x_reconstructed = self._dec3(h)
-        x_reconstructed = torch.relu(x_reconstructed)
+        x_reconstructed = torch.sigmoid(x_reconstructed)
         return x_reconstructed
 
 
