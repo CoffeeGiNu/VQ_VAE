@@ -10,6 +10,7 @@ import numpy as np
 
 
 def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
+    optimizer.zero_grad()
     # model = model.to(device)
     if device == 'cuda':
         inputs = torch.from_numpy(np.array(inputs)).half().to(device)
@@ -26,7 +27,6 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
             quantized=results['vq_output']['quantize'])
         loss = loss_dict['loss']
         if is_train:
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
     # results['loss'] = loss
@@ -38,7 +38,10 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
 
 def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs, 
     batch_size, earlystopping=None, is_train=True, profiler=None, writer=None):
-    model.to(device)
+    if is_train:
+        model.train().to(device)
+    else:
+        model.eval().to(device)
     with tqdm(
         total=len(data_set),
         bar_format=None if 'ipykernel' in sys.modules else '{l_bar}{bar:15}{r_bar}{bar:-10b}',
@@ -63,6 +66,8 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
                     loss_dict['vq_loss'].cpu().detach().numpy(), epoch + total)
                 writer.add_scalar("loss_train/commitment_loss", 
                     loss_dict['commitment_loss'].cpu().detach().numpy(), epoch + total)
+                writer.add_scalar("loss_train/perplexity", 
+                    results['vq_output']['perplexity'].cpu().detach().numpy(), epoch + total)
             total += batch_size
             loss_sum += loss_dict['loss'].cpu().detach().numpy() * batch_size
             running_loss = loss_sum / total

@@ -63,7 +63,7 @@ class Encoder(nn.Module):
             padding=1                           
         )
         self._enc_2 = nn.Conv2d(
-            dim_hidden //2, 
+            dim_hidden // 2, 
             dim_hidden,
             kernel_size=4,
             stride=2,
@@ -173,8 +173,8 @@ class Decoder(nn.Module):
         h = self._dec1(z_q)
         h = self._residual_stack(h)
         h = torch.relu(self._dec2(h))
-        x_reconstructed = self._dec3(h)
-        x_reconstructed = torch.sigmoid(x_reconstructed)
+        h = self._dec3(h)
+        x_reconstructed = torch.sigmoid(h)
         return x_reconstructed
 
 
