@@ -10,7 +10,6 @@ import numpy as np
 
 
 def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
-    optimizer.zero_grad()
     # model = model.to(device)
     if device == 'cuda':
         inputs = torch.from_numpy(np.array(inputs)).half().to(device)
@@ -18,6 +17,7 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
         inputs = torch.from_numpy(np.array(inputs)).to(device)
     # labels = torch.from_numpy(np.array(labels)).to(device)
     with torch.set_grad_enabled(is_train):
+        optimizer.zero_grad()
         results = model(inputs)
         # loss = results['loss']
         loss_dict = criterion(
