@@ -20,10 +20,10 @@ parser.add_argument('-dh', '--dim_hidden', default=128, type=int)
 parser.add_argument('-drh', '--dim_residual_hidden', default=128, type=int)
 parser.add_argument('-nrl', '--num_residual_layers', default=2, type=int)
 parser.add_argument('-de', '--dim_embedding', default=64, type=int)
-parser.add_argument('-nes', '--num_embeddings', default=128, type=int)
+parser.add_argument('-nes', '--num_embeddings', default=1024, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=2e-3, type=float)
+parser.add_argument('-lr', '--learning_rate', default=2e-4, type=float)
 
 args = parser.parse_args()
 
@@ -308,9 +308,8 @@ if __name__ == "__main__":
     import torchvision
     
     
-    # cifar10 = tfds.load("cifar10:3.0.2", split="train", batch_size=-1)
-    train_data = tfds.load("cifar10:3.0.2", split="train")
-    val_data = tfds.load("cifar10:3.0.2", split="test")
+    dataset_train = load_dataset_folder(path='datasets/', split='train')
+    dataset_valid = load_dataset_folder(path='datasets/', split='valid', shuffle=False)
     
     
     def cast_and_nomrmalise_images(images):
@@ -320,21 +319,21 @@ if __name__ == "__main__":
         return images
     
 
-    dataset_train = (
-        train_data
-        .map(cast_and_nomrmalise_images)
-        .shuffle(10000)
-        # .repeat(-1)
-        .batch(BATCH_SIZE, drop_remainder=True)
-        .prefetch(-1)
-    )
-    dataset_valid = (
-        val_data
-        .map(cast_and_nomrmalise_images)
-        # .repeat(1)
-        .batch(BATCH_SIZE)
-        .prefetch(-1)
-    )
+    # dataset_train = (
+    #     train_data
+    #     .map(cast_and_nomrmalise_images)
+    #     .shuffle(10000)
+    #     # .repeat(-1)
+    #     .batch(BATCH_SIZE, drop_remainder=True)
+    #     .prefetch(-1)
+    # )
+    # dataset_valid = (
+    #     val_data
+    #     .map(cast_and_nomrmalise_images)
+    #     # .repeat(1)
+    #     .batch(BATCH_SIZE)
+    #     .prefetch(-1)
+    # )
     for sample_train in dataset_train:
         sample_inputs_train = sample_train['image']
         break
@@ -354,7 +353,8 @@ if __name__ == "__main__":
     train_res_recon_error = []
     train_res_perplexity = []
 
-    for i in range(NUM_EPOCHS*30):
+    for i in range(NUM_EPOCHS*50):
+        model.to(device)
         for data in dataset_train.as_numpy_iterator():
             data = torch.tensor(data['image']).to(device)
             break
@@ -379,3 +379,5 @@ if __name__ == "__main__":
             # r = torch.reshape(r, (r.shape[0], 1, 28, 28))
             grid = torchvision.utils.make_grid(r, nrow=r.shape[0])
             writer.add_image("reconstraction_image", grid, global_step=i)
+    torch.save(model.to('cpu').state_dict(), "./models/"+"checkpoint.pth")
+    writer.close()
