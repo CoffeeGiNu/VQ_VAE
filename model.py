@@ -132,49 +132,38 @@ class VectorQuantizer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, dim_hidden,  num_residual_layers, 
-        dim_residual_hidden, name=None):
+    def __init__(self, in_channels, dim_hidden, num_residual_layers, dim_residual_hidden):
         super(Decoder, self).__init__()
-        self._in_channels = in_channels
-        self._dim_hidden = dim_hidden
-        self.num_residual_layers = num_residual_layers
-        self.dim_residual_hidden = dim_residual_hidden
-    
-        self._dec1 = nn.Conv2d(
-            in_channels, 
-            dim_hidden,
-            kernel_size=3,
-            stride=1,
-            padding=1
-        )
-        self._residual_stack = ResidualStack(
-            dim_hidden, 
-            dim_hidden,
-            num_residual_layers,
-            dim_residual_hidden
-        )
-        self._dec2 = nn.ConvTranspose2d(
-            dim_hidden, 
-            dim_hidden // 2,
-            kernel_size=4,
-            stride=2,
-            padding=1
-        )
-        self._dec3 = nn.ConvTranspose2d(
-            dim_hidden // 2, 
-            3,
-            kernel_size=4,
-            stride=2,
-            padding=1
-        )
- 
-    def forward(self, z_q):
-        h = self._dec1(z_q)
-        h = self._residual_stack(h)
-        h = torch.relu(self._dec2(h))
-        x_reconstructed = self._dec3(h)
-        # x_reconstructed = torch.sigmoid(x_reconstructed)
-        return x_reconstructed
+        
+        self._conv_1 = nn.Conv2d(in_channels=in_channels,
+                                 out_channels=dim_hidden,
+                                 kernel_size=3, 
+                                 stride=1, padding=1)
+        
+        self._residual_stack = ResidualStack(in_channels=dim_hidden,
+                                             num_hiddens=dim_hidden,
+                                             num_residual_layers=num_residual_layers,
+                                             num_residual_hiddens=dim_residual_hidden)
+        
+        self._conv_trans_1 = nn.ConvTranspose2d(in_channels=dim_hidden, 
+                                                out_channels=dim_hidden//2,
+                                                kernel_size=4, 
+                                                stride=2, padding=1)
+        
+        self._conv_trans_2 = nn.ConvTranspose2d(in_channels=dim_hidden//2, 
+                                                out_channels=3,
+                                                kernel_size=4, 
+                                                stride=2, padding=1)
+
+    def forward(self, inputs):
+        x = self._conv_1(inputs)
+        
+        x = self._residual_stack(x)
+        
+        x = self._conv_trans_1(x)
+        x = F.relu(x)
+        
+        return self._conv_trans_2(x)
 
 
 class VQVAE(nn.Module):
