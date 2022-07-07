@@ -82,15 +82,15 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
             if profiler:
                 profiler.step()
                 pbar.update(1)
-        if writer:
-            if is_train:
-                r = results['x_reconstructed']
-                # r = torch.reshape(r, (r.shape[0], 1, 28, 28))
-                grid = torchvision.utils.make_grid(r, nrow=r.shape[0])
-                writer.add_image("reconstraction_image", grid, global_step=epoch)
+        if epoch % 10:
+            if writer:
+                if not is_train:
+                    r = results['x_reconstructed']
+                    # r = torch.reshape(r, (r.shape[0], 1, 28, 28))
+                    grid = torchvision.utils.make_grid(r, nrow=r.shape[0])
+                    writer.add_image("reconstraction_image", grid, global_step=epoch)
         if earlystopping:
             earlystopping((running_loss), model)
-    
     return model
 
 

@@ -100,23 +100,33 @@ if __name__ == "__main__":
     earlystopping = EarlyStopping(path='models/', patience=5)
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
-    with torch.profiler.profile(
-        # schedule=torch.profiler.schedule(
-        #     wait=2,
-        #     warmup=2,
-        #     active=6,
-        #     repeat=1),
-        # use_cuda=(True if device=='cuda' else False),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler(log_dir),
-        record_shapes=True,
-        with_stack=True
-    ) as profiler:
-        for e in range(NUM_EPOCHS):
-            model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
-            model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
+    # with torch.profiler.profile(
+    #     # schedule=torch.profiler.schedule(
+    #     #     wait=2,
+    #     #     warmup=2,
+    #     #     active=6,
+    #     #     repeat=1),
+    #     # use_cuda=(True if device=='cuda' else False),
+    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(log_dir),
+    #     record_shapes=True,
+    #     with_stack=True
+    # ) as profiler:
+    #     for e in range(NUM_EPOCHS):
+    #         model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
+    #         model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
 
-            if earlystopping.early_stop:
-                # writer.add_graph(model)
-                writer.close()
-                break
+    #         if earlystopping.early_stop:
+    #             # writer.add_graph(model)
+    #             writer.close()
+    #             break
+    #     writer.close()
+
+    for e in range(NUM_EPOCHS):
+        model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=None, writer=writer)
+        model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=None, writer=writer)
+
+        if earlystopping.early_stop:
+            # writer.add_graph(model)
+            writer.close()
+            break
         writer.close()
