@@ -5,16 +5,16 @@ import torch.nn.functional as F
 
 class Residual(nn.Module):
 
-    def __init__(self, in_channels, num_hiddens, num_residual_hiddens):
+    def __init__(self, in_channels, dim_hidden, dim_residual_hidden):
         super(Residual, self).__init__()
         self._block = nn.Sequential(
             nn.ReLU(True),
             nn.Conv2d(in_channels=in_channels,
-                      out_channels=num_residual_hiddens,
+                      out_channels=dim_residual_hidden,
                       kernel_size=3, stride=1, padding=1, bias=False),
             nn.ReLU(True),
-            nn.Conv2d(in_channels=num_residual_hiddens,
-                      out_channels=num_hiddens,
+            nn.Conv2d(in_channels=dim_residual_hidden,
+                      out_channels=dim_hidden,
                       kernel_size=1, stride=1, bias=False)
         )
     
@@ -24,10 +24,10 @@ class Residual(nn.Module):
 
 class ResidualStack(nn.Module):
 
-    def __init__(self, in_channels, num_hiddens, num_residual_layers, num_residual_hiddens):
+    def __init__(self, in_channels, dim_hidden, num_residual_layers, dim_residual_hidden):
         super(ResidualStack, self).__init__()
         self._num_residual_layers = num_residual_layers
-        self._layers = nn.ModuleList([Residual(in_channels, num_hiddens, num_residual_hiddens)
+        self._layers = nn.ModuleList([Residual(in_channels, dim_hidden, dim_residual_hidden)
                              for _ in range(self._num_residual_layers)])
 
     def forward(self, x):
@@ -141,9 +141,9 @@ class Decoder(nn.Module):
                                  stride=1, padding=1)
         
         self._residual_stack = ResidualStack(in_channels=dim_hidden,
-                                             num_hiddens=dim_hidden,
+                                             dim_hidden=dim_hidden,
                                              num_residual_layers=num_residual_layers,
-                                             num_residual_hiddens=dim_residual_hidden)
+                                             dim_residual_hidden=dim_residual_hidden)
         
         self._conv_trans_1 = nn.ConvTranspose2d(in_channels=dim_hidden, 
                                                 out_channels=dim_hidden//2,

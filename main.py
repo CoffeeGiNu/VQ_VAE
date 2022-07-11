@@ -20,10 +20,11 @@ parser.add_argument('-dh', '--dim_hidden', default=128, type=int)
 parser.add_argument('-drh', '--dim_residual_hidden', default=128, type=int)
 parser.add_argument('-nrl', '--num_residual_layers', default=2, type=int)
 parser.add_argument('-de', '--dim_embedding', default=64, type=int)
-parser.add_argument('-nes', '--num_embeddings', default=32, type=int)
+parser.add_argument('-nes', '--num_embeddings', default=128, type=int)
 parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
-parser.add_argument('-lr', '--learning_rate', default=1e-3, type=float)
+parser.add_argument('-lr', '--learning_rate', default=2e-3, type=float)
+parser.add_argument('-ip', '--is_profiler', default=False, type=bool)
 
 args = parser.parse_args()
 
@@ -40,6 +41,7 @@ COMMITMENT_COST = args.commitment_cost
 SEED = args.seed
 DECAY = args.decay
 LEARNING_RATE = args.learning_rate
+IS_PROFILE = args.is_profiler
 
 
 if __name__ == "__main__":
@@ -57,7 +59,44 @@ if __name__ == "__main__":
     for sample_train in dataset_train.as_numpy_iterator():
         sample_inputs_train = sample_train['image']
         break
-    train_data_variance = torch.var(torch.tensor(sample_inputs_train)).numpy()
+    train_data_variance = np.var(np.array(sample_inputs_train))
+
+
+    import numpy as np
+    import tensorflow as tf
+    import tensorflow_datasets as tfds
+
+
+    train_data = tfds.load("cifar10:3.0.2", split="train")
+    val_data = tfds.load("cifar10:3.0.2", split="test")
+    
+    
+    def cast_and_nomrmalise_images(images):
+        x = images['image']
+        x = (tf.cast(x, tf.float32) / 255.0)
+        images['image'] = tf.transpose(x, (2, 0, 1))
+        return images
+    
+
+    dataset_train = (
+        train_data
+        .map(cast_and_nomrmalise_images)
+        .shuffle(10000)
+        # .repeat(-1)
+        .batch(BATCH_SIZE, drop_remainder=True)
+        .prefetch(-1)
+    )
+    dataset_valid = (
+        val_data
+        .map(cast_and_nomrmalise_images)
+        # .repeat(1)
+        .batch(BATCH_SIZE)
+        .prefetch(-1)
+    )
+    for sample_train in dataset_train:
+        sample_inputs_train = sample_train['image']
+        break
+    train_data_variance = np.var(np.array(sample_inputs_train))
     
     model = VQVAE(
         encoder=Encoder(
@@ -85,13 +124,7 @@ if __name__ == "__main__":
         ),
         # data_variance=train_data_variance,
     ).to(device)
-    # optimizer = torch.optim.Adam(
-    #     model.parameters(), 
-    #     lr=LEARNING_RATE, 
-    #     # weight_decay=DECAY, 
-    #     eps=0.001
-    # )
-    optimizer = torch.optim.SGD(
+    optimizer = torch.optim.Adam(
         model.parameters(), 
         lr=LEARNING_RATE, 
         # weight_decay=DECAY, 
@@ -100,33 +133,34 @@ if __name__ == "__main__":
     earlystopping = EarlyStopping(path='models/', patience=5)
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
-    # with torch.profiler.profile(
-    #     # schedule=torch.profiler.schedule(
-    #     #     wait=2,
-    #     #     warmup=2,
-    #     #     active=6,
-    #     #     repeat=1),
-    #     # use_cuda=(True if device=='cuda' else False),
-    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(log_dir),
-    #     record_shapes=True,
-    #     with_stack=True
-    # ) as profiler:
-    #     for e in range(NUM_EPOCHS):
-    #         model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
-    #         model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
+    if IS_PROFILE:
+        with torch.profiler.profile(
+            # schedule=torch.profiler.schedule(
+            #     wait=2,
+            #     warmup=2,
+            #     active=6,
+            #     repeat=1),
+            # use_cuda=(True if device=='cuda' else False),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(log_dir),
+            record_shapes=True,
+            with_stack=True
+        ) as profiler:
+            for e in range(NUM_EPOCHS):
+                model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
+                model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
 
-    #         if earlystopping.early_stop:
-    #             # writer.add_graph(model)
-    #             writer.close()
-    #             break
-    #     writer.close()
-
-    for e in range(NUM_EPOCHS):
-        model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=None, writer=writer)
-        model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=None, writer=writer)
-
-        if earlystopping.early_stop:
-            # writer.add_graph(model)
+                if earlystopping.early_stop:
+                    # writer.add_graph(model)
+                    writer.close()
+                    break
             writer.close()
-            break
+    else:
+        for e in range(NUM_EPOCHS):
+            model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=None, writer=writer)
+            model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=None, writer=writer)
+
+            if earlystopping.early_stop:
+                # writer.add_graph(model)
+                writer.close()
+                break
         writer.close()
