@@ -24,10 +24,9 @@ def step(model, inputs, labels, optimizer, criterion, device, is_train=True):
             inputs=inputs, 
             encoded=results['z'], 
             outputs=results['x_reconstructed'], 
-            quantized=results['vq_output']['quantize'])
-        loss = loss_dict['loss']
+            quantized=results['vq_output']['quantize_for_loss'])
         if is_train:
-            loss.backward()
+            loss_dict['loss'].backward()
             # nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
             optimizer.step()
     # results['loss'] = loss
@@ -102,12 +101,11 @@ class VQVAELoss(nn.Module):
         self._data_variance = data_variance
 
     def forward(self, inputs, encoded, outputs, quantized):
-        quantized = quantized.permute(0, 2, 3, 1).contiguous()
         quantized = quantized.view(encoded.size())
         e_latent_loss = F.mse_loss(quantized.detach(), encoded)
         q_latent_loss = F.mse_loss(quantized, encoded.detach())
         reconstructed_loss = (F.mse_loss(outputs, inputs)
-            # / torch.tensor(self._data_variance)
+            / torch.tensor(self._data_variance)
         )
         loss = (reconstructed_loss + q_latent_loss 
              + self._commitment_cost * e_latent_loss)

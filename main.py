@@ -114,7 +114,7 @@ if __name__ == "__main__":
         vector_quantizer=VectorQuantizer(
             dim_embedding=DIM_EMBEDDING, 
             num_embeddings=NUM_EMBEDDINGS, 
-            # commitment_cost=COMMITMENT_COST,
+            commitment_cost=COMMITMENT_COST,
         ),
         pre_vq_conv=nn.Conv2d(
             DIM_HIDDEN, 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             kernel_size=1,
             stride=1
         ),
-        # data_variance=train_data_variance,
+        data_variance=train_data_variance,
     ).to(device)
     optimizer = torch.optim.Adam(
         model.parameters(), 

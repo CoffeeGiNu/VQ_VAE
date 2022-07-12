@@ -82,12 +82,13 @@ class Encoder(nn.Module):
 
 class VectorQuantizer(nn.Module):
 
-    def __init__(self, dim_embedding, num_embeddings):
+    def __init__(self, dim_embedding, num_embeddings, commitment_cost=None):
         super(VectorQuantizer, self).__init__()
         self._dim_embedding = dim_embedding
         self._num_embeddings = num_embeddings
         self._embedding = nn.Embedding(num_embeddings, dim_embedding)
         self._embedding.weight.data.uniform_(-1/num_embeddings, 1/num_embeddings)
+        self._commitment_cost = commitment_cost
      
     def forward(self, inputs):
         # convert inputs from BCHW -> BHWC
@@ -110,10 +111,11 @@ class VectorQuantizer(nn.Module):
         # Quantize and unflatten
         quantized = torch.matmul(encodings, self._embedding.weight).view(input_shape)
         
-        # Loss
+        # For Loss
+        quantize_for_loss = quantized
         # e_latent_loss = F.mse_loss(quantized.detach(), inputs)
         # q_latent_loss = F.mse_loss(quantized, inputs.detach())
-        # loss = q_latent_loss + self._commitment_cost * e_latent_loss
+        # vq_loss = q_latent_loss + self._commitment_cost * e_latent_loss
         
         quantized = inputs + (quantized - inputs).detach()
         avg_probs = torch.mean(encodings, dim=0)
@@ -125,7 +127,8 @@ class VectorQuantizer(nn.Module):
             'distances': distances,
             'encodings': encodings,
             'encoding_indices': encoding_indices,
-            'quantize': quantized,
+            'quantized': quantized,
+            'quantize_for_loss':quantize_for_loss,
             'perplexity': perplexity,
             # 'vq_loss': vq_loss, 
         }
@@ -168,21 +171,21 @@ class Decoder(nn.Module):
 
 class VQVAE(nn.Module):
 
-    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, name=None):
+    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, data_variance=None, name=None):
         super(VQVAE, self).__init__()
         self._encoder = encoder
         self._decoder = decoder
         self._vector_quantizer = vector_quantizer
         self._pre_vq_conv = pre_vq_conv
-        # self._data_variance = data_variance
+        self._data_variance = data_variance
         
     def forward(self, inputs):
         z = self._pre_vq_conv(self._encoder(inputs))
         vq_output = self._vector_quantizer(z)
-        z_q = vq_output['quantize']
+        z_q = vq_output['quantized']
         x_reconstructed = self._decoder(z_q)
-        # reconstructed_error = torch.mean(
-        #     torch.square(x_reconstructed - inputs) / torch.tensor(self._data_variance))
+        # reconstructed_error = (
+        #     F.mse_loss(x_reconstructed, inputs) / torch.tensor(self._data_variance))
         # loss = reconstructed_error + vq_output['vq_loss']
         return {
             'z': z,
