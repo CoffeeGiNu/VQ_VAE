@@ -155,6 +155,7 @@ if __name__ == "__main__":
                     break
             writer.close()
     else:
+        print(len(dataset_train))
         for e in range(NUM_EPOCHS):
             model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=None, writer=writer)
             model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=None, writer=writer)

@@ -81,7 +81,7 @@ def epoch_loop(model, data_set, optimizer, criterion, device, epoch, num_epochs,
             )
             if profiler:
                 profiler.step()
-                pbar.update(1)
+            pbar.update(1)
         if epoch % 10:
             if writer:
                 if not is_train:
