@@ -25,6 +25,7 @@ parser.add_argument('-cc', '--commitment_cost', default=0.25, type=float)
 parser.add_argument('-d', '--decay', default=0.99, type=float)
 parser.add_argument('-lr', '--learning_rate', default=2e-3, type=float)
 parser.add_argument('-ip', '--is_profiler', default=False, type=bool)
+parser.add_argument('-es', '--is_early_stopping', default=False, type=bool)
 
 args = parser.parse_args()
 
@@ -42,6 +43,7 @@ SEED = args.seed
 DECAY = args.decay
 LEARNING_RATE = args.learning_rate
 IS_PROFILE = args.is_profiler
+IS_EARLY_STOPPING = args.is_early_stopping
 
 
 if __name__ == "__main__":
@@ -128,9 +130,11 @@ if __name__ == "__main__":
         model.parameters(), 
         lr=LEARNING_RATE, 
         # weight_decay=DECAY, 
-        # eps=0.001
+        eps=0.001
     )
-    earlystopping = EarlyStopping(path='models/', patience=5)
+    earlystopping = None
+    if IS_EARLY_STOPPING:
+        earlystopping = EarlyStopping(path='models/', patience=10)
     criterion = VQVAELoss(COMMITMENT_COST, train_data_variance)
 
     if IS_PROFILE:
@@ -148,20 +152,20 @@ if __name__ == "__main__":
             for e in range(NUM_EPOCHS):
                 model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=profiler, writer=writer)
                 model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=profiler, writer=writer)
-
-                if earlystopping.early_stop:
-                    # writer.add_graph(model)
-                    writer.close()
-                    break
+                if IS_EARLY_STOPPING:
+                    if earlystopping.early_stop:
+                        # writer.add_graph(model)
+                        writer.close()
+                        break
             writer.close()
     else:
         print(len(dataset_train))
         for e in range(NUM_EPOCHS):
             model = epoch_loop(model, dataset_train, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=True, profiler=None, writer=writer)
             model = epoch_loop(model, dataset_valid, optimizer, criterion, device, e, NUM_EPOCHS, BATCH_SIZE, is_train=False, earlystopping=earlystopping, profiler=None, writer=writer)
-
-            if earlystopping.early_stop:
-                # writer.add_graph(model)
-                writer.close()
-                break
+            if IS_EARLY_STOPPING:
+                if earlystopping.early_stop:
+                    # writer.add_graph(model)
+                    writer.close()
+                    break
         writer.close()
