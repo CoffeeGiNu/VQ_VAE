@@ -9,13 +9,17 @@ class Residual(nn.Module):
         super(Residual, self).__init__()
         self._block = nn.Sequential(
             nn.ReLU(True),
-            nn.Conv2d(in_channels=in_channels,
-                      out_channels=dim_residual_hidden,
-                      kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=dim_residual_hidden,
+                kernel_size=3, stride=1, padding=1, bias=False
+            ),
             nn.ReLU(True),
-            nn.Conv2d(in_channels=dim_residual_hidden,
-                      out_channels=dim_hidden,
-                      kernel_size=1, stride=1, bias=False)
+            nn.Conv2d(
+                in_channels=dim_residual_hidden,
+                out_channels=dim_hidden,
+                kernel_size=1, stride=1, bias=False
+            ),
         )
     
     def forward(self, x):
@@ -24,11 +28,13 @@ class Residual(nn.Module):
 
 class ResidualStack(nn.Module):
 
-    def __init__(self, in_channels, dim_hidden, num_residual_layers, dim_residual_hidden):
+    def __init__(self, in_channels, dim_hidden, num_residual_layers, 
+        dim_residual_hidden):
         super(ResidualStack, self).__init__()
         self._num_residual_layers = num_residual_layers
-        self._layers = nn.ModuleList([Residual(in_channels, dim_hidden, dim_residual_hidden)
-                             for _ in range(self._num_residual_layers)])
+        self._layers = nn.ModuleList([Residual(
+            in_channels, dim_hidden, dim_residual_hidden
+        ) for _ in range(self._num_residual_layers)])
 
     def forward(self, x):
         for i in range(self._num_residual_layers):
@@ -82,7 +88,8 @@ class Encoder(nn.Module):
 
 class VectorQuantizer(nn.Module):
 
-    def __init__(self, dim_embedding, num_embeddings, commitment_cost=None):
+    def __init__(self, dim_embedding, num_embeddings, 
+        commitment_cost=None):
         super(VectorQuantizer, self).__init__()
         self._dim_embedding = dim_embedding
         self._num_embeddings = num_embeddings
@@ -100,16 +107,18 @@ class VectorQuantizer(nn.Module):
         
         # Calculate distances
         distances = (torch.sum(flat_input**2, dim=1, keepdim=True) 
-                    + torch.sum(self._embedding.weight**2, dim=1)
-                    - 2 * torch.matmul(flat_input, self._embedding.weight.t()))
+                  + torch.sum(self._embedding.weight**2, dim=1)
+                  - 2 * torch.matmul(flat_input, self._embedding.weight.t()))
             
         # Encoding
         encoding_indices = torch.argmin(distances, dim=1).unsqueeze(1)
-        encodings = torch.zeros(encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
+        encodings = torch.zeros(encoding_indices.shape[0], 
+            self._num_embeddings, device=inputs.device)
         encodings.scatter_(1, encoding_indices, 1)
         
         # Quantize and unflatten
-        quantized = torch.matmul(encodings, self._embedding.weight).view(input_shape)
+        quantized = torch.matmul(encodings, 
+            self._embedding.weight).view(input_shape)
         
         # For Loss
         quantize_for_loss = quantized
@@ -135,28 +144,33 @@ class VectorQuantizer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, dim_hidden, num_residual_layers, dim_residual_hidden):
+    def __init__(self, in_channels, dim_hidden, num_residual_layers, 
+        dim_residual_hidden):
         super(Decoder, self).__init__()
-        
-        self._conv_1 = nn.Conv2d(in_channels=in_channels,
-                                 out_channels=dim_hidden,
-                                 kernel_size=3, 
-                                 stride=1, padding=1)
-        
-        self._residual_stack = ResidualStack(in_channels=dim_hidden,
-                                             dim_hidden=dim_hidden,
-                                             num_residual_layers=num_residual_layers,
-                                             dim_residual_hidden=dim_residual_hidden)
-        
-        self._conv_trans_1 = nn.ConvTranspose2d(in_channels=dim_hidden, 
-                                                out_channels=dim_hidden//2,
-                                                kernel_size=4, 
-                                                stride=2, padding=1)
-        
-        self._conv_trans_2 = nn.ConvTranspose2d(in_channels=dim_hidden//2, 
-                                                out_channels=3,
-                                                kernel_size=4, 
-                                                stride=2, padding=1)
+        self._conv_1 = nn.Conv2d(
+            in_channels=in_channels,
+            out_channels=dim_hidden,
+            kernel_size=3, 
+            stride=1, padding=1
+        )
+        self._residual_stack = ResidualStack(
+            in_channels=dim_hidden,
+            dim_hidden=dim_hidden,
+            num_residual_layers=num_residual_layers,
+            dim_residual_hidden=dim_residual_hidden
+        )
+        self._conv_trans_1 = nn.ConvTranspose2d(
+            in_channels=dim_hidden, 
+            out_channels=dim_hidden//2,
+            kernel_size=4, 
+            stride=2, padding=1
+        )
+        self._conv_trans_2 = nn.ConvTranspose2d(
+            in_channels=dim_hidden//2, 
+            out_channels=3,
+            kernel_size=4, 
+            stride=2, padding=1
+        )
 
     def forward(self, inputs):
         x = self._conv_1(inputs)
@@ -171,7 +185,8 @@ class Decoder(nn.Module):
 
 class VQVAE(nn.Module):
 
-    def __init__(self, encoder, decoder, vector_quantizer, pre_vq_conv, data_variance=None, name=None):
+    def __init__(self, encoder, decoder, vector_quantizer, 
+        pre_vq_conv, data_variance=None, name=None):
         super(VQVAE, self).__init__()
         self._encoder = encoder
         self._decoder = decoder
